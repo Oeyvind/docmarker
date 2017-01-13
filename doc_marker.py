@@ -92,9 +92,10 @@ def toggle():
         sync_reftime = int(time.time())
 
 def enter_new_synctime(event):
-    global synctime1var, sync_reftime,synctime1,syncclock
+    global synctime1var, sync_reftime,synctime1,syncclock,synctime1var_saved
     synctime1var.set(synctime1var.get())
     synctime1 = synctime1var.get()
+    synctime1var_saved = synctime1var.get()
     syncclock.config(background='green')
     sync_reftime = synctime1var.get()
 
@@ -106,6 +107,7 @@ synctime1 = '00:00:00'
 sync_reftime = int(time.time())
 synctime1var = StringVar()
 synctime1var.set(synctime1)
+synctime1var_saved = synctime1var.get()
 syncclock = Entry(master, width=9, textvariable=synctime1var)
 syncclock.grid(row=0, column=1)
 
@@ -133,6 +135,7 @@ outfilename = 'marker_log_'+start_timedate+'.txt'
 f = open(outfilename, 'w')
 f.write('Marker file for Crossadaptive project\n')
 f.write('{} markers\n\n'.format(len(master_list)))
+f.write('Synctime is {}\n\n'.format(synctime1var_saved))
 f.write('Time\t\tSynctime\tSignificance\tComment\n')
 for item in master_list:
     print('*\n')
