@@ -3,181 +3,143 @@
 
 ## Quick hack of a marker tool for making lists of interesting events in project documentation
 ## Meant to be used when viewing session recordings, livesessions, etc
-## 2016 Oeyvind Brandtsegg (obrandts@gmail.com)
+## 2016-17 Oeyvind Brandtsegg (obrandts@gmail.com)
 
+from Tkinter import *
 import time
+start_timedate = time.strftime('%Y_%m_%d_%H_%M_%S')
 
-class _Getch:
-    """Gets a single character from standard input.  Does not echo to the
-screen. From http://code.activestate.com/recipes/134892/"""
-    def __init__(self):
-        try:
-            self.impl = _GetchWindows()
-        except ImportError:
-            try:
-                self.impl = _GetchMacCarbon()
-            except(AttributeError, ImportError):
-                self.impl = _GetchUnix()
+master = Tk()
+i = 2
+timewidth = 8
+stimewidth = 10
+signwidth = 10
+commentwidth = 40
+alt = False
+latest_significance = ''
+latest_comment = ''
+master_list = []
 
-    def __call__(self): return self.impl()
-
-
-class _GetchUnix:
-    def __init__(self):
-        import tty, sys, termios # import termios now or else you'll get the Unix version on the Mac
-
-    def __call__(self):
-        import sys, tty, termios
-        fd = sys.stdin.fileno()
-        old_settings = termios.tcgetattr(fd)
-        try:
-            tty.setraw(sys.stdin.fileno())
-            ch = sys.stdin.read(1)
-        finally:
-            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-        return ch
-
-class _GetchWindows:
-    def __init__(self):
-        import msvcrt
-
-    def __call__(self):
-        import msvcrt
-        return msvcrt.getch()
-
-class _GetchMacCarbon:
-    """
-    A function which returns the current ASCII key that is down;
-    if no ASCII key is down, the null string is returned.  The
-    page http://www.mactech.com/macintosh-c/chap02-1.html was
-    very helpful in figuring out how to do this.
-    """
-    def __init__(self):
-        import Carbon
-        Carbon.Evt #see if it has this (in Unix, it doesn't)
-
-    def __call__(self):
-        import Carbon
-        if Carbon.Evt.EventAvail(0x0008)[0]==0: # 0x0008 is the keyDownMask
-            return ''
-        else:
-            #
-            # The event contains the following info:
-            # (what,msg,when,where,mod)=Carbon.Evt.GetNextEvent(0x0008)[1]
-            #
-            # The message (msg) contains the ASCII char which is
-            # extracted with the 0x000000FF charCodeMask; this
-            # number is converted to an ASCII character with chr() and
-            # returned
-            #
-            (what,msg,when,where,mod)=Carbon.Evt.GetNextEvent(0x0008)[1]
-            return chr(msg & 0x000000FF)
-
-
-def getKey():
-    inkey = _Getch()
-    import sys
-    for i in xrange(sys.maxint):
-        k=inkey()
-        if k<>'':break
-    return k
+def setalt(event):
+    global alt
+    alt = True
     
-def isInt(v):
-    try:     i = int(v)
-    except:  return False
-    return True
-    
-def time_add(t1, t2):
-    h1,m1,s1 = t1.split(':')
-    h2,m2,s2 = t2.split(':')
-    sum_s = int(s1)+int(s2)
-    mem_m = sum_s/60
-    sum_s %= 60
-    sum_m = int(m1)+int(m2)+mem_m
-    mem_h = sum_m/60
-    sum_m %= 60
-    sum_h = int(h1)+int(h2)+mem_h
-    return '{:02d}:{:02d}:{:02d}'.format(sum_h, sum_m, sum_s)
-
-def update_running_time(t,timedelta):
-    now = int(time.time())
-    if t != now:
-        inc = '00:00:{:02d}'.format(now-t)
-        timedelta = time_add(timedelta, inc)
-    return now, timedelta
+def key(event):
+    global alt
+    try:
+        key = int(event.char)
+    except:
+        key = event.char
+    if alt and key in range(10):
+        global i, latest_significance,latest_comment, master_list
+        tim, stim, signi, comm, latest_significance, latest_comment = make_event(master, i, event.char)
+        master_list.append([tim, stim, signi, comm])
+        i += 1
+    if alt and key == 's':
+        latest_significance.focus()
+    if alt and key == 'c':
+        latest_comment.focus()
+    alt = False
         
-def update_timedelta(t, timedelta):
-    if (len(t) != 8) or (len(t.split(':')) != 3):
-        print 'invalid time format, use hh:mm:ss format'
+def make_event(parent, linenum, preroll=0):
+    t = StringVar()
+    tim = Entry(master, textvariable=t, width=timewidth)
+    tim.grid(row=linenum, column=0)
+    t.set(clock_add(time1, -int(preroll)))
+    s = StringVar()
+    stim = Entry(master, textvariable=s, width=stimewidth)
+    stim.grid(row=linenum, column=1)
+    s.set(clock_add(synctime1, -int(preroll)))
+    signi= StringVar()
+    significance = Entry(master, textvariable=signi, width=signwidth)
+    significance.grid(row=linenum, column=2)
+    comm = StringVar()
+    comment = Entry(master, textvariable=comm, width=commentwidth)
+    comment.grid(row=linenum, column=3)
+    return t, s, signi,comm, significance, comment
+
+def tick():
+    global time1, synctime1, sync_reftime
+    time2 = time.strftime('%H:%M:%S')
+    if time2 != time1:
+        time1 = time2
+        clock.config(text=time2)
+    timenow = int(time.time())
+    if t_btn.config('text')[-1] == 'Sync: running':
+        if sync_reftime < timenow:
+            addtime = timenow-sync_reftime
+            synctime1 = clock_add(synctime1, addtime)
+            sync_reftime = int(time.time())
+            synctime1var.set(synctime1)
+    clock.after(200, tick)
+
+def clock_add(t, add_n):
+    t1 = t.split(':')
+    t1[-1] = int(t1[-1])+add_n
+    t1[-2] = int(t1[-2])+(t1[-1]/60)
+    t1[-3] = int(t1[-3])+(t1[-2]/60)
+    t1[-1] %= 60
+    t1[-2] %= 60
+    t1[-3] %= 24
+    return '{0:02d}:{1:02d}:{2:02d}'.format(*t1)
+
+def toggle():
+    if t_btn.config('text')[-1] == 'Sync: running':
+        t_btn.config(text='Sync: stopped')
     else:
-        timedelta = t
-        print 'time delta set to {}'.format(t)
-    return timedelta
+        t_btn.config(text='Sync: running')
+        global sync_reftime
+        sync_reftime = int(time.time())
+
+def enter_new_synctime(event):
+    global synctime1var, sync_reftime,synctime1,syncclock
+    synctime1var.set(synctime1var.get())
+    synctime1 = synctime1var.get()
+    syncclock.config(background='green')
+    sync_reftime = synctime1var.get()
+
+time1 = ''
+clock = Label(master)
+clock.grid(row=0, column=0)
+
+synctime1 = '00:00:00'
+sync_reftime = int(time.time())
+synctime1var = StringVar()
+synctime1var.set(synctime1)
+syncclock = Entry(master, width=9, textvariable=synctime1var)
+syncclock.grid(row=0, column=1)
+
+t_btn = Button(text="Sync: stopped", width=12, command=toggle)
+t_btn.grid(row=0, column=2)
+
+Label(master, text="Time", width=timewidth).grid(row=1, column=0)
+Label(master, text="Synctime", width=stimewidth).grid(row=1, column=1)
+Label(master, text="Significance", width=signwidth).grid(row=1, column=2)
+Label(master, text="Comment", width=commentwidth).grid(row=1, column=3)
+
+def syncclock_edit(event):
+    global syncclock
+    syncclock.config(background='red')
     
-if __name__=="__main__":
-    run = 1
-    runclock = 0
-    time_0 = int(time.time())
-    timedelta = '00:00:00'
-    print '\n*** *** ***'
-    print 'Enter markers by using number keys (0-9)'
-    print 'The time marker will be set to N seconds before the time it was entered,'
-    print '...using the number pressed as N\n'
-    time.sleep(0.3)
-    print 'Add a comment to the last marker by typing C (optional)'
-    print 'Set the significance of the latest event marked by typing V (optional)'
-    print 'Set the session sync time by typing T'
-    print 'Start and stop the session sync time with the space bar'
-    time.sleep(0.4)
-    print 'Quit and save: type "_"'
-    print '*** *** ***'
-    start_timedate = time.strftime('%Y_%m_%d_%H_%M_%S')
-    markerlist = []
-    # marker format: localtime, synctime, significance, comment
-    # where synctime is the time into the track, performance or other media/action
-    # significance is the subjective immediate and approximate value if significance of the event (from 1 to 9)
-    while run:
-        key = getKey()
-        if runclock > 0:
-            time_0, timedelta = update_running_time(time_0, timedelta)
-        if key == '_':
-            run = 0
-        elif isInt(key):
-            print 'add marker {} seconds ago'.format(key)
-            now = time.strftime('%H:%M:%S')
-            predelay = '00:00:-{:02d}'.format(int(key))
-            now = time_add(now,predelay)
-            synctime = time_add(timedelta,predelay)
-            print '    time: {}, synctime: {}'.format(now, synctime)
-            markerlist.append([now,timedelta,' \t', ' '])
-        elif key == ' ':
-            runclock = (runclock+1)%2
-            print 'clock running: {} at time {}'.format(runclock, timedelta)
-            if runclock == 1:
-                time_0 = int(time.time())
-        elif key == 'T':
-            print 'set time (hh:mm:ss)'
-            t = raw_input()
-            timedelta = update_timedelta(t, timedelta)
-        elif key == 'C':
-            print 'enter comment for last marker'
-            comment = raw_input()
-            markerlist[-1][3] = comment
-        elif key == 'V':
-            print 'enter marker significance (1-9)'
-            val = raw_input()
-            if isInt(val):
-                markerlist[-1][2] = val+'\t'
-        else:
-            print 'key {} not used'.format(key)
-    outfilename = 'marker_log_'+start_timedate+'.txt'
-    f = open(outfilename, 'w')
-    f.write('Marker file for Crossadaptive project\n')
-    f.write('{} markers\n\n'.format(len(markerlist)))
-    f.write('Time\t\tSynctime\tSignificance\tComment\n')
-    for item in markerlist:
-        s = ''
-        for it in item:
-            s += it+'\t'
-        f.write(s +'\n')
-    f.close()
+master.bind("<Key>", key)
+syncclock.bind("<Key>", syncclock_edit)
+syncclock.bind("<Return>", enter_new_synctime)
+master.bind("<Alt_L>", setalt)
+tick()
+
+mainloop()
+
+outfilename = 'marker_log_'+start_timedate+'.txt'
+f = open(outfilename, 'w')
+f.write('Marker file for Crossadaptive project\n')
+f.write('{} markers\n\n'.format(len(master_list)))
+f.write('Time\t\tSynctime\tSignificance\tComment\n')
+for item in master_list:
+    print('*\n')
+    s = ''
+    for e in item:
+        s = s + e.get() + '\t'
+    f.write(s +'\n')
+    print(s)
+f.close()
+print('done')
