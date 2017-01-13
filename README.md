@@ -17,6 +17,8 @@ Markers will have the following contents:
 - significance: the significance of the event (number from 0 to 9). Loosely differentiate between more and less important comments
 - comment: free text comment describing what the marker
 * Setting the sync time can be done by clicking in the sync time field. It will turn red when editing. Press enter to activate the changes.
+* Starting or pausing the sync time can be done with the pushbutton "Sync:stopped/running". 
+If you are reviewing a recorded performance and you need to stop to take more elaborate notes, it might be practical to stop the synctime while doing so.
 * Setting significance for the last event can be done by pressing Alt+s, then enter a number.
 * Entering a comment for the last event can be done by pressing Alt+c, then typing in the comment
 * All fields can also be updated in usual text editing manner by clicking on the field and typing in text
