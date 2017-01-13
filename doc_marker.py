@@ -138,7 +138,6 @@ f.write('{} markers\n\n'.format(len(master_list)))
 f.write('Synctime is {}\n\n'.format(synctime1var_saved))
 f.write('Time\t\tSynctime\tSignificance\tComment\n')
 for item in master_list:
-    print('*\n')
     s = ''
     for e in item:
         s = s + e.get() + '\t'
