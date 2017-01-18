@@ -7,6 +7,12 @@
 
 from Tkinter import *
 import time
+import platform, os
+
+this_platform = 'Windows'
+if os.name == 'posix' or platform.system() == 'Darwin':
+    this_platform = 'OSX'
+
 start_timedate = time.strftime('%Y_%m_%d_%H_%M_%S')
 
 master = Tk()
@@ -15,31 +21,33 @@ timewidth = 8
 stimewidth = 10
 signwidth = 10
 commentwidth = 40
-alt = False
 latest_significance = ''
 latest_comment = ''
 master_list = []
 
-def setalt(event):
-    global alt
-    alt = True
     
 def key(event):
-    global alt
+    global this_platform
+    Alt = False
+    if event.state == 8 and this_platform == 'OSX':
+        Alt = True
+    if event.state == 131080 and this_platform == 'Windows':
+        Alt = True
     try:
         key = int(event.char)
     except:
         key = event.char
-    if alt and key in range(10):
+    if Alt and key in range(10):
         global i, latest_significance,latest_comment, master_list
         tim, stim, signi, comm, latest_significance, latest_comment = make_event(master, i, event.char)
         master_list.append([tim, stim, signi, comm])
         i += 1
-    if alt and key == 's':
+    if Alt and key == 's':
+        save_list()
+    if Alt and key == 'a':
         latest_significance.focus()
-    if alt and key == 'c':
+    if event.state in (8,131080) and key == 'd':
         latest_comment.focus()
-    alt = False
         
 def make_event(parent, linenum, preroll=0):
     t = StringVar()
@@ -56,6 +64,7 @@ def make_event(parent, linenum, preroll=0):
     comm = StringVar()
     comment = Entry(master, textvariable=comm, width=commentwidth)
     comment.grid(row=linenum, column=3)
+    comment.focus()
     return t, s, signi,comm, significance, comment
 
 def tick():
@@ -123,25 +132,27 @@ def syncclock_edit(event):
     global syncclock
     syncclock.config(background='red')
     
+outfilename = 'marker_log_'+start_timedate+'.txt'
+
+def save_list():
+    global outfilename
+    f = open(outfilename, 'w')
+    f.write('Marker file for Crossadaptive project\n')
+    f.write('{} markers\n\n'.format(len(master_list)))
+    f.write('Synctime is {}\n\n'.format(synctime1var_saved))
+    f.write('Time\t\tSynctime\tSignificance\tComment\n')
+    for item in master_list:
+        s = item[0].get() + '\t' + item[1].get() + '\t' + item[2].get()  + '\t\t' +  item[3].get()
+        f.write(s +'\n')
+        print(s)
+    f.close()
+    print('marker list saved')
+
 master.bind("<Key>", key)
 syncclock.bind("<Key>", syncclock_edit)
 syncclock.bind("<Return>", enter_new_synctime)
-master.bind("<Alt_L>", setalt)
 tick()
 
 mainloop()
-
-outfilename = 'marker_log_'+start_timedate+'.txt'
-f = open(outfilename, 'w')
-f.write('Marker file for Crossadaptive project\n')
-f.write('{} markers\n\n'.format(len(master_list)))
-f.write('Synctime is {}\n\n'.format(synctime1var_saved))
-f.write('Time\t\tSynctime\tSignificance\tComment\n')
-for item in master_list:
-    s = ''
-    for e in item:
-        s = s + e.get() + '\t'
-    f.write(s +'\n')
-    print(s)
-f.close()
-print('done')
+save_list()
+print('normal exit, all ok')

@@ -49,10 +49,8 @@ f.write('Merged from {} and {}\n'.format(infilename1, infilename2))
 f.write('Synctime is {} and {} respectively \n\n'.format(synctime1,synctime2))
 f.write('Time\t\tSynctime\tSignificance\tComment\n')
 for item in master_list_sorted:
-    s = ''
-    for e in item:
-        s = s + e + '\t'
-    s = s[:-2] +'\n'
+    print item
+    s = item[0] + '\t' + item[1] + '\t' + item[2] + '\t\t' +  item[4]
     f.write(s)
     print(s)
 f.close()
