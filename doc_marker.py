@@ -143,7 +143,7 @@ def save_list():
     f.write('Time\t\tSynctime\tSignificance\tComment\n')
     for item in master_list:
         s = item[0].get() + '\t' + item[1].get() + '\t' + item[2].get()  + '\t\t' +  item[3].get()
-        f.write(s +'\n')
+        f.write(s.encode('utf-8') +'\n')
         print(s)
     f.close()
     print('marker list saved')
